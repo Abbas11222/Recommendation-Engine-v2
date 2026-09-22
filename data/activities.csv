@@ -1,0 +1,34 @@
+activity_id,name,category,tags,physical_intensity,group_size,duration_min
+A001,Chair Yoga,Fitness & Movement,"yoga,stretching,low-impact",low,small,45
+A002,Morning Tai Chi,Fitness & Movement,"tai-chi,balance,mindfulness",low,medium,30
+A003,Walking Club,Fitness & Movement,"walking,cardio,outdoor",medium,small,40
+A004,Seated Strength Training,Fitness & Movement,"strength,resistance-bands,low-impact",low,small,30
+A005,Water Aerobics,Fitness & Movement,"swimming,cardio,low-impact",medium,medium,45
+A006,Dance for Fun,Fitness & Movement,"dance,music,cardio",medium,large,40
+A007,Watercolor Painting,Arts & Crafts,"painting,creative,fine-motor",low,small,60
+A008,Pottery Workshop,Arts & Crafts,"pottery,creative,fine-motor",low,small,60
+A009,Knitting Circle,Arts & Crafts,"knitting,social,fine-motor",low,small,60
+A010,Scrapbooking Club,Arts & Crafts,"scrapbooking,memory,creative",low,small,50
+A011,Woodworking Basics,Arts & Crafts,"woodworking,creative,hands-on",medium,small,60
+A012,Bingo Night,Social & Games,"bingo,social,games",low,large,60
+A013,Card Games Club,Social & Games,"cards,strategy,social",low,small,60
+A014,Trivia Afternoon,Social & Games,"trivia,cognitive,social",low,medium,45
+A015,Board Game Social,Social & Games,"board-games,strategy,social",low,medium,60
+A016,Billiards Club,Social & Games,"billiards,social,hand-eye",low,small,45
+A017,Live Piano Hour,Music & Entertainment,"music,piano,listening",low,large,45
+A018,Sing-Along Session,Music & Entertainment,"music,singing,social",low,large,40
+A019,Movie Afternoon,Music & Entertainment,"movies,relaxation,social",low,large,90
+A020,Karaoke Fun,Music & Entertainment,"music,singing,social",low,medium,60
+A021,Book Club,Educational & Cognitive,"reading,discussion,cognitive",low,small,60
+A022,Current Events Discussion,Educational & Cognitive,"discussion,news,cognitive",low,medium,45
+A023,Memory & Brain Games,Educational & Cognitive,"puzzles,memory,cognitive",low,small,30
+A024,Language Learning Circle,Educational & Cognitive,"language,learning,cognitive",low,small,45
+A025,History Lecture Series,Educational & Cognitive,"history,lecture,cognitive",low,medium,50
+A026,Garden Club,Outdoor & Nature,"gardening,outdoor,hands-on",medium,small,60
+A027,Bird Watching Walk,Outdoor & Nature,"nature,walking,outdoor",low,small,45
+A028,Outdoor Courtyard Social,Outdoor & Nature,"social,outdoor,relaxation",low,medium,45
+A029,Meditation & Mindfulness,Spiritual & Reflection,"meditation,mindfulness,relaxation",low,small,30
+A030,Sunday Fellowship Circle,Spiritual & Reflection,"spiritual,community,reflection",low,medium,45
+A031,Baking Club,Culinary,"baking,hands-on,social",low,small,60
+A032,Cooking Demo,Culinary,"cooking,demo,social",low,medium,45
+A033,Tea Tasting Social,Culinary,"tea,social,relaxation",low,small,30
