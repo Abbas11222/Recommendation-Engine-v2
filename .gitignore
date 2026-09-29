@@ -1,1 +1,5 @@
 myenv3/
+__pycache__/
+*.py[cod]
+*$py.class
+__pycache__/data_loader.cpython-311.pyc
