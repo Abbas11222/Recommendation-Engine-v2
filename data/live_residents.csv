@@ -1,0 +1,11 @@
+resident_id,name,age,gender,mobility_level,interests,preferred_time,move_in_date
+GUEST1790696884,New Resident,,,uses_walker,"language,learning,lecture",no_preference,2026-09-29
+GUEST1790696895,New Resident,,,uses_walker,"language,learning,lecture",no_preference,2026-09-29
+GUEST1790696914,New Resident,,,uses_cane,"language,learning,lecture,balance,cognitive",no_preference,2026-09-29
+GUEST1790696932,New Resident,,,uses_cane,"balance,cooking,cognitive,board-games,baking",no_preference,2026-09-29
+GUEST1790696955,New Resident,,,uses_cane,"balance,cooking,cognitive,board-games,baking",no_preference,2026-09-29
+GUEST1790696974,New Resident,,,uses_cane,"balance,cooking,cognitive,board-games,baking",no_preference,2026-09-29
+GUEST1790696999,New Resident,,,independent,"balance,board-games,dance,mindfulness",no_preference,2026-09-29
+GUEST1790697034,Abbas,,,independent,dance,no_preference,2026-09-29
+GUEST1790697572,New Resident,,,independent,balance,no_preference,2026-09-29
+GUEST1790697639,Sallateen,,,wheelchair,"balance,fine-motor,hand-eye,discussion,games,language",no_preference,2026-09-29

@@ -30,7 +30,9 @@ deployment you'd replace the in-memory engine with a proper database and a
 task queue -- documented as a "with more time" improvement in the README.
 """
 
+import os
 import threading
+import pandas as pd
 from flask import Flask, jsonify, request, render_template
 
 from data_loader import DataLoader
@@ -38,20 +40,26 @@ from content_recommender import ContentRecommender
 from collaborative_recommander import CollaborativeRecommender
 from hybrid_engine import HybridEngine
 from interaction_logger import InteractionLogger
+from implicit_tracker import ImplicitTracker
 
 app = Flask(__name__)
 logger = InteractionLogger(data_dir="data")
+implicit_tracker = ImplicitTracker(data_dir="data")
 
 _state = {"loader": None, "engine": None}
 _lock = threading.Lock()
 
 
 def rebuild_engine():
-    """Re-reads all data (synthetic + live) and refits both recommenders."""
+    """Re-reads all EXPLICIT data (synthetic + live) and refits both recommenders.
+    Implicit (click/impression) data does NOT require a rebuild -- ImplicitTracker
+    reads its file fresh on every request, so clicks take effect immediately
+    without this heavier refit step.
+    """
     loader = DataLoader(data_dir="data").load_all()
     content = ContentRecommender().fit(loader.activities_df)
     collaborative = CollaborativeRecommender().fit(loader.interactions_df)
-    engine = HybridEngine(content, collaborative)
+    engine = HybridEngine(content, collaborative, implicit_tracker=implicit_tracker)
     with _lock:
         _state["loader"] = loader
         _state["engine"] = engine
@@ -140,7 +148,7 @@ def get_recommendations(resident_id):
 
     recs["explanation"] = recs.apply(lambda row: engine.explain(row), axis=1)
     columns = ["activity_id", "name", "content_score", "collab_score_raw",
-               "hybrid_score", "source", "explanation"]
+               "implicit_score", "hybrid_score", "source", "explanation"]
     result = recs[columns].fillna(0).to_dict(orient="records")
 
     # attach category/physical_intensity for nicer frontend display
@@ -160,6 +168,25 @@ def get_recommendations(resident_id):
         },
         "recommendations": result,
     })
+
+
+# ---------------------------------------------------------------------------
+# API: implicit signals -- clicks, logged from the frontend the moment a
+# resident's card is opened. No rating required. See implicit_tracker.py.
+# ---------------------------------------------------------------------------
+@app.route("/api/events", methods=["POST"])
+def log_event():
+    data = request.get_json(force=True)
+    resident_id = data.get("resident_id")
+    activity_id = data.get("activity_id")
+    if not resident_id or not activity_id:
+        return jsonify({"error": "resident_id and activity_id are required."}), 400
+
+    implicit_tracker.log_click(resident_id, activity_id)
+    # Deliberately NOT calling rebuild_engine() here -- implicit scores are
+    # read fresh from disk on every recommend() call, so this stays cheap
+    # and near-instant, unlike explicit feedback which needs a full refit.
+    return jsonify({"status": "logged"}), 201
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +225,12 @@ def stats():
         ["category"].value_counts().to_dict()
     )
 
+    implicit_totals = {"total_impressions": 0, "total_clicks": 0}
+    if os.path.exists(implicit_tracker.path):
+        events = pd.read_csv(implicit_tracker.path)
+        implicit_totals["total_impressions"] = int((events["event_type"] == "impression").sum())
+        implicit_totals["total_clicks"] = int((events["event_type"] == "click").sum())
+
     return jsonify({
         "total_residents": int(len(loader.residents_df)),
         "total_activities": int(len(loader.activities_df)),
@@ -205,6 +238,7 @@ def stats():
         "total_attended": int(len(attended)),
         "category_popularity": category_counts,
         "recent_activity": logger.get_recent_interactions(8).to_dict(orient="records"),
+        **implicit_totals,
     })
 
 

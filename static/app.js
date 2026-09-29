@@ -157,7 +157,7 @@ async function loadRecommendations(residentId) {
   list.innerHTML = data.recommendations.map(rec => {
     const color = CATEGORY_COLORS[rec.category] || "var(--sage)";
     return `
-      <div class="rec-card" style="--cat-color:${color}">
+      <div class="rec-card" style="--cat-color:${color}" data-activity-id="${rec.activity_id}">
         <div class="rec-main">
           <div class="rec-name-row">
             <span class="rec-name">${rec.name}</span>
@@ -178,9 +178,36 @@ async function loadRecommendations(residentId) {
       </div>`;
   }).join("");
 
-  list.querySelectorAll(".log-btn").forEach(btn => {
-    btn.addEventListener("click", () => openModal(btn.dataset.activityId, btn.dataset.activityName));
+  list.querySelectorAll(".rec-card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      // Log implicit "click" interest whenever the card is engaged with,
+      // whether or not they go on to submit explicit feedback.
+      logImplicitClick(card.dataset.activityId);
+    });
   });
+
+  list.querySelectorAll(".log-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation(); // don't double-trigger the card's own click handler oddly
+      openModal(btn.dataset.activityId, btn.dataset.activityName);
+    });
+  });
+}
+
+async function logImplicitClick(activityId) {
+  try {
+    await fetchJSON("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        resident_id: state.currentResidentId,
+        activity_id: activityId,
+      }),
+    });
+  } catch (err) {
+    // Implicit tracking failing silently is fine -- it shouldn't block the UI.
+    console.warn("Could not log click", err);
+  }
 }
 
 function updateResidentMeta(resident) {
@@ -266,6 +293,7 @@ async function refreshStats() {
     <div class="stat-item"><span class="num">${data.total_residents}</span><span class="label">Residents</span></div>
     <div class="stat-item"><span class="num">${data.total_activities}</span><span class="label">Activities</span></div>
     <div class="stat-item"><span class="num">${data.total_attended}</span><span class="label">Logged visits</span></div>
+    <div class="stat-item"><span class="num">${data.total_clicks}</span><span class="label">Clicks tracked</span></div>
   `;
 
   const entries = Object.entries(data.category_popularity).sort((a, b) => b[1] - a[1]);

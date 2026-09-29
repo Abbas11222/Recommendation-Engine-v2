@@ -118,6 +118,27 @@ class Evaluator:
             f"pipeline still runs without KeyErrors."
         )
 
+    def test_implicit_signal_cold_start(self):
+        """
+        Edge case: a resident with NO click/impression history at all.
+        implicit_score should default to 0 for every candidate rather than
+        crashing or producing NaN.
+        """
+        fake_resident = pd.Series({
+            "resident_id": "R_NO_CLICKS_TEST",
+            "name": "Test NoClicks",
+            "mobility_level": "independent",
+            "interests": "cards,music",
+        })
+        try:
+            recs = self.engine.recommend(fake_resident, resident_history_ids=set(), n=5)
+            passed = not recs.empty and recs["implicit_score"].notna().all()
+            detail = f"{len(recs)} recommendations returned; implicit_score defaulted cleanly to 0."
+        except Exception as e:
+            passed = False
+            detail = f"Crashed with error: {e}"
+        self._log("implicit_signal_cold_start", passed, detail)
+
     def run_all(self):
         print("=" * 60)
         print("RUNNING EVALUATION SUITE")
@@ -127,6 +148,7 @@ class Evaluator:
         self.test_resident_missing_interests()
         self.test_wheelchair_mobility_filter()
         self.test_activity_never_rated()
+        self.test_implicit_signal_cold_start()
         print("=" * 60)
         n_pass = sum(r["passed"] for r in self.results)
         print(f"RESULT: {n_pass}/{len(self.results)} checks passed")

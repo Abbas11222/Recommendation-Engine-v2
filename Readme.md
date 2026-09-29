@@ -35,6 +35,11 @@ blended by a `HybridEngine`:
   high-intensity activities to residents using a wheelchair or walker,
   directly enforcing the "no medical/clinical recommendations" boundary
   from the scope statement.
+- **Implicit behaviour tracking** (`implicit_tracker.py`) observes which
+  recommended activities a resident clicks into, without requiring them to
+  submit a rating. Scored as click-through rate (clicks ÷ impressions) so
+  an activity clicked once out of one impression isn't treated the same as
+  one clicked once out of twenty — see "Three-signal blend" below.
 
 ### The live feedback loop
 
@@ -49,6 +54,39 @@ the combined synthetic + live data, so the very next recommendation
 request — for *any* resident, not just the one who just acted — reflects
 that new information. This is the actual difference between a one-off
 script and a real recommendation engine: it learns from usage.
+
+### Three-signal blend: explicit, collaborative, and implicit
+
+`HybridEngine` combines three signals, not two, each normalized to a 0-1
+scale before blending so no signal dominates just because its raw numbers
+happen to be bigger:
+
+| Signal | Source | Requires effort from resident? | Weight |
+|---|---|---|---|
+| Content-based | stated interests vs. activity tags | No | shares the "primary" 85% with collaborative |
+| Collaborative | explicit attended + star rating | Yes (rate something) | shares the "primary" 85% with content |
+| Implicit | clicked a recommendation card | No (just browsing) | fixed 15% |
+
+Implicit signal is deliberately capped at a small, fixed weight rather than
+competing equally with the other two — a click is weak, easily accidental
+evidence of interest, while an actual attended-and-rated visit is strong
+evidence. This is a judgment call, documented here rather than left
+implicit (no pun intended) in the code. Impressions are logged
+server-side the instant recommendations are returned (`HybridEngine`
+itself calls `implicit_tracker.log_impressions(...)`); clicks are logged
+from the frontend (`static/app.js`) the moment a resident opens a card.
+
+### Age and gender: intentionally excluded from scoring
+
+Both fields are collected and stored (`residents.csv`), but neither feeds
+into any recommender. This was a deliberate decision, not an oversight:
+both are weak predictors of activity preference relative to stated
+interests and rating history, and using them risks encoding stereotypes
+(e.g. "women get knitting," "older residents get bingo") into the ranking.
+`gender` was generated independently of interest tags in the synthetic
+dataset specifically so it can support a fairness audit — comparing
+recommendation distributions across the field — without ever being an
+input to the recommendations themselves. See "What I'd Improve" below.
 
 ## Architecture
 
@@ -70,7 +108,10 @@ JSON response --> rendered as recommendation cards, stats, and a live feed
 - `GET /api/recommendations/<resident_id>` — ranked recommendations, with a
   `content_weight` query param to live-tune the content/collaborative blend
 - `POST /api/interactions` — log attendance + rating, triggers a refit
-- `GET /api/stats` — facility-wide category popularity + recent activity feed
+- `POST /api/events` — log an implicit click (no rebuild needed; implicit
+  scores are read fresh from disk on every request, so this stays instant)
+- `GET /api/stats` — facility-wide category popularity, recent activity
+  feed, and total impressions/clicks tracked
 
 ## Dataset
 
@@ -107,7 +148,7 @@ both recommenders to detect.
 
 ## What I Tested
 
-See `evaluator.py` / console output from `main.py`. Five checks, all
+See `evaluator.py` / console output from `main.py`. Six checks, all
 passing:
 
 1. **Existing resident** — recommendations exclude previously attended
@@ -121,16 +162,26 @@ passing:
    the filter overrides raw interest matching.
 5. **Never-rated activity** — pipeline handles activities with zero
    ratings without errors.
+6. **Implicit signal cold-start** — a resident with zero clicks yet gets a
+   clean `implicit_score = 0` rather than an error, confirming the
+   three-signal blend degrades gracefully when one signal is empty.
+
+I also manually verified the live feedback loop end-to-end: logging a
+click on a recommended activity raised its `implicit_score` from 0.0 to
+1.0 (1 click / 1 impression) on the very next request, and its
+`hybrid_score` rose accordingly — confirming the "observed behaviour"
+requirement actually changes ranking, not just gets logged and ignored.
 
 ## What I'd Improve With More Time
 
 - Replace hand-built cosine similarity with `scikit-learn`'s
   implementation and benchmark against it.
-- Add a formal fairness audit comparing recommendation distributions across
-  the `gender` field (data already supports this).
-- Tune `content_weight` / `collab_weight` against held-out interaction data
-  instead of a fixed 0.5/0.5 split.
-- Add time-decay so older ratings count less than recent ones.
+- Run the fairness audit across `gender` that the data already supports,
+  rather than just leaving the field available for one.
+- Tune `content_weight` / `collab_weight` / `implicit_weight` against
+  held-out interaction data instead of fixed defaults.
+- Add time-decay so older ratings and older clicks count less than recent
+  ones.
 - Move from CSV + in-memory refit to a real database (e.g. SQLite/Postgres)
   and a production WSGI server (gunicorn) instead of Flask's dev server,
   for genuine multi-user concurrent use.
@@ -149,18 +200,20 @@ python app.py                  # website: starts Flask at http://127.0.0.1:5000
 ```
 eldercare_reco/
 ├── data/                          # residents.csv, activities.csv, interactions.csv
-│                                    # (live_interactions.csv / live_residents.csv appear
-│                                    #  here once the website starts logging real usage)
+│                                    # (live_interactions.csv / live_residents.csv /
+│                                    #  live_implicit_events.csv appear here once the
+│                                    #  website starts logging real usage)
 ├── generate_dataset.py            # synthetic data generator (seeded, reproducible)
 ├── data_loader.py                 # DataLoader — reads base + live CSVs
 ├── interaction_logger.py          # InteractionLogger — writes live interactions/residents
+├── implicit_tracker.py            # ImplicitTracker — impressions/clicks -> click-through rate
 ├── content_recommender.py         # ContentRecommender — tag-overlap + mobility filter
 ├── collaborative_recommender.py   # CollaborativeRecommender — pivot table + cosine similarity
-├── hybrid_engine.py               # HybridEngine — normalizes + blends both scores
+├── hybrid_engine.py               # HybridEngine — normalizes + blends all three scores
 ├── evaluator.py                   # Evaluator — required test suite
 ├── main.py                        # CLI entry point
 ├── app.py                          # Flask API + website entry point
-├── templates/index.html            # dashboard page
+├── templates/index.html            # dashboard page (includes wellness-only disclaimer)
 ├── static/style.css                # dashboard styling
 ├── static/app.js                   # dashboard frontend logic (fetch calls to the API)
 ├── requirements.txt
