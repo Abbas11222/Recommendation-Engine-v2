@@ -18,8 +18,9 @@ medication, or clinical care recommendations.**
 
 ## What I Built and Why
 
-A hybrid recommender with two independent scoring engines, blended by a
-`HybridEngine`:
+A hybrid recommender served as a **live website** (Flask API + HTML/CSS/JS
+dashboard), not just a script, with two independent scoring engines
+blended by a `HybridEngine`:
 
 - **Content-based filtering** compares a resident's stated interest tags to
   each activity's attribute tags. This works even for a resident with zero
@@ -34,6 +35,42 @@ A hybrid recommender with two independent scoring engines, blended by a
   high-intensity activities to residents using a wheelchair or walker,
   directly enforcing the "no medical/clinical recommendations" boundary
   from the scope statement.
+
+### The live feedback loop
+
+The website lets anyone: browse an existing resident's recommendations,
+register as a brand-new resident (interests + mobility, no history needed),
+and log feedback ("attended" + a 1-5 rating) on a recommended activity.
+Every logged interaction is written to `data/live_interactions.csv` and
+every new resident to `data/live_residents.csv` — kept separate from the
+original synthetic dataset so the data lineage stays honest. After each
+write, the Flask backend **refits both recommenders from scratch** using
+the combined synthetic + live data, so the very next recommendation
+request — for *any* resident, not just the one who just acted — reflects
+that new information. This is the actual difference between a one-off
+script and a real recommendation engine: it learns from usage.
+
+## Architecture
+
+```
+Browser (static/app.js)
+     | fetch()
+     v
+Flask routes (app.py)
+     |
+     v
+DataLoader --> ContentRecommender + CollaborativeRecommender --> HybridEngine
+     |
+     v
+JSON response --> rendered as recommendation cards, stats, and a live feed
+```
+
+`app.py` exposes:
+- `GET /api/residents`, `POST /api/residents` — list / register residents
+- `GET /api/recommendations/<resident_id>` — ranked recommendations, with a
+  `content_weight` query param to live-tune the content/collaborative blend
+- `POST /api/interactions` — log attendance + rating, triggers a refit
+- `GET /api/stats` — facility-wide category popularity + recent activity feed
 
 ## Dataset
 
@@ -64,6 +101,7 @@ both recommenders to detect.
 - **Pandas**: `pivot_table` for the ratings matrix, boolean masking,
   `groupby`-adjacent aggregation, vectorized scoring.
 - **NumPy**: cosine similarity via vectorized dot products.
+- **Flask**: REST API serving JSON to a vanilla HTML/CSS/JS frontend.
 - No external ML library — similarity logic was hand-built to understand
   the mechanics before reaching for `scikit-learn`.
 
@@ -93,13 +131,17 @@ passing:
 - Tune `content_weight` / `collab_weight` against held-out interaction data
   instead of a fixed 0.5/0.5 split.
 - Add time-decay so older ratings count less than recent ones.
+- Move from CSV + in-memory refit to a real database (e.g. SQLite/Postgres)
+  and a production WSGI server (gunicorn) instead of Flask's dev server,
+  for genuine multi-user concurrent use.
 
 ## How to Run
 
 ```bash
 pip install -r requirements.txt
 python generate_dataset.py   # regenerates data/*.csv (optional, already included)
-python main.py                # runs recommendations + evaluation suite
+python main.py                # CLI: runs recommendations + evaluation suite in the terminal
+python app.py                  # website: starts Flask at http://127.0.0.1:5000
 ```
 
 ## Project Structure
@@ -107,13 +149,20 @@ python main.py                # runs recommendations + evaluation suite
 ```
 eldercare_reco/
 ├── data/                          # residents.csv, activities.csv, interactions.csv
+│                                    # (live_interactions.csv / live_residents.csv appear
+│                                    #  here once the website starts logging real usage)
 ├── generate_dataset.py            # synthetic data generator (seeded, reproducible)
-├── data_loader.py                 # DataLoader — single source of truth for CSV access
+├── data_loader.py                 # DataLoader — reads base + live CSVs
+├── interaction_logger.py          # InteractionLogger — writes live interactions/residents
 ├── content_recommender.py         # ContentRecommender — tag-overlap + mobility filter
 ├── collaborative_recommender.py   # CollaborativeRecommender — pivot table + cosine similarity
 ├── hybrid_engine.py               # HybridEngine — normalizes + blends both scores
 ├── evaluator.py                   # Evaluator — required test suite
-├── main.py                        # entry point
+├── main.py                        # CLI entry point
+├── app.py                          # Flask API + website entry point
+├── templates/index.html            # dashboard page
+├── static/style.css                # dashboard styling
+├── static/app.js                   # dashboard frontend logic (fetch calls to the API)
 ├── requirements.txt
 └── README.md
 ```

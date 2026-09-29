@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Willow Grove Activities · Recommendations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">&#127807;</span>
+      <div>
+        <h1>Willow Grove</h1>
+        <p>Activity &amp; Wellness Recommendations</p>
+      </div>
+    </div>
+    <div class="topbar-stats" id="topbar-stats"></div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- LEFT: resident selection -->
+  <section class="panel who-panel">
+    <h2>Who's this for?</h2>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" data-mode="existing">Existing resident</button>
+      <button class="mode-btn" data-mode="new">New resident</button>
+    </div>
+
+    <div id="mode-existing" class="mode-body">
+      <label for="resident-select">Resident</label>
+      <select id="resident-select"></select>
+      <p class="resident-meta" id="resident-meta"></p>
+    </div>
+
+    <div id="mode-new" class="mode-body hidden">
+      <label for="new-name">Name</label>
+      <input id="new-name" type="text" placeholder="e.g. Margaret Ellis">
+
+      <label for="new-mobility">Mobility</label>
+      <select id="new-mobility">
+        <option value="independent">Independent</option>
+        <option value="uses_cane">Uses a cane</option>
+        <option value="uses_walker">Uses a walker</option>
+        <option value="wheelchair">Wheelchair</option>
+      </select>
+
+      <label>Interests <span class="hint">(pick a few)</span></label>
+      <div id="interest-tags" class="tag-picker"></div>
+
+      <button id="register-btn" class="primary-btn">Get my recommendations</button>
+      <p class="form-error" id="register-error"></p>
+    </div>
+
+    <div class="weight-block">
+      <label for="weight-slider">
+        Recommendation balance
+        <span class="hint">content match &harr; what similar residents liked</span>
+      </label>
+      <input id="weight-slider" type="range" min="0" max="1" step="0.05" value="0.5">
+      <div class="weight-labels">
+        <span>Similar residents</span>
+        <span>Your interests</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CENTER: recommendations -->
+  <section class="panel recs-panel">
+    <h2 id="recs-heading">Recommended for you</h2>
+    <div id="recs-list" class="recs-list"></div>
+  </section>
+
+  <!-- RIGHT: facility insights -->
+  <section class="panel insights-panel">
+    <h2>Facility insights</h2>
+    <div id="category-chart" class="category-chart"></div>
+
+    <h3>Recent activity</h3>
+    <ul id="recent-feed" class="recent-feed"></ul>
+  </section>
+
+</main>
+
+<!-- Feedback modal -->
+<div id="feedback-modal" class="modal hidden">
+  <div class="modal-card">
+    <h3 id="feedback-title">Log feedback</h3>
+    <p class="hint" id="feedback-sub"></p>
+
+    <div class="attended-toggle">
+      <button class="toggle-btn" data-attended="true">Attended</button>
+      <button class="toggle-btn" data-attended="false">Didn't attend</button>
+    </div>
+
+    <div id="rating-block" class="rating-block hidden">
+      <label>Rating</label>
+      <div class="stars" id="star-picker">
+        <span data-star="1">&#9733;</span><span data-star="2">&#9733;</span>
+        <span data-star="3">&#9733;</span><span data-star="4">&#9733;</span>
+        <span data-star="5">&#9733;</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button id="cancel-feedback" class="ghost-btn">Cancel</button>
+      <button id="submit-feedback" class="primary-btn" disabled>Save feedback</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

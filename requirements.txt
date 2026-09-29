@@ -1,4 +1,3 @@
 pandas
 numpy
-seaborn
-matplotlib
+flask>=3.0
