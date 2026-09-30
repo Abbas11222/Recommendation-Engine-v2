@@ -13,7 +13,7 @@ FLOW:
   DataLoader -> ContentRecommender + CollaborativeRecommender -> HybridEngine
        |
        v
-  JSON response back to the browser
+  JSON response back to the browserr
 
 THE FEEDBACK LOOP (the actual "real recommendation engine" behavior you
 asked for): every time someone logs feedback (POST /api/interactions) or a
@@ -112,8 +112,38 @@ def register_resident():
 # ---------------------------------------------------------------------------
 @app.route("/api/activities", methods=["GET"])
 def list_activities():
+    """
+    Full activity catalog, with optional server-side filtering:
+      - ?q=<text>       matches against name, category, or tags (case-insensitive)
+      - ?category=<cat> exact category match
+    Powers the "Browse all activities" tab -- independent of any resident's
+    personalized recommendations, the way a real app's catalog/search page
+    would be.
+    """
     loader, _ = get_state()
-    return jsonify(loader.activities_df.to_dict(orient="records"))
+    df = loader.activities_df.copy()
+
+    q = request.args.get("q", default="", type=str).strip().lower()
+    if q:
+        haystack = (
+            df["name"].str.lower() + " " +
+            df["category"].str.lower() + " " +
+            df["tags"].str.lower()
+        )
+        df = df[haystack.str.contains(q, na=False)]
+
+    category = request.args.get("category", default="", type=str).strip()
+    if category:
+        df = df[df["category"] == category]
+
+    return jsonify(df.to_dict(orient="records"))
+
+
+@app.route("/api/categories", methods=["GET"])
+def list_categories():
+    """Every distinct activity category, for the browse tab's filter chips."""
+    loader, _ = get_state()
+    return jsonify(sorted(loader.activities_df["category"].unique().tolist()))
 
 
 @app.route("/api/interest-tags", methods=["GET"])

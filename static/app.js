@@ -18,11 +18,14 @@ const CATEGORY_COLORS = {
 
 let state = {
   mode: "existing",
+  view: "recommended",
   currentResidentId: null,
   selectedTags: new Set(),
   pendingFeedback: null,   // { activity_id, name }
   attended: null,
   rating: 0,
+  browseSearch: "",
+  browseCategory: "",
 };
 
 // ---------------------------------------------------------------------
@@ -31,6 +34,7 @@ let state = {
 document.addEventListener("DOMContentLoaded", async () => {
   await loadResidents();
   await loadInterestTags();
+  await loadCategories();
   await refreshStats();
   bindEvents();
 });
@@ -76,6 +80,15 @@ function bindEvents() {
     btn.addEventListener("click", () => switchMode(btn.dataset.mode));
   });
 
+  document.querySelectorAll(".view-tab").forEach(tab => {
+    tab.addEventListener("click", () => switchView(tab.dataset.view));
+  });
+
+  document.getElementById("browse-search").addEventListener("input", debounce((e) => {
+    state.browseSearch = e.target.value;
+    loadBrowseActivities();
+  }, 250));
+
   document.getElementById("resident-select").addEventListener("change", async (e) => {
     state.currentResidentId = e.target.value;
     await loadRecommendations(state.currentResidentId);
@@ -103,6 +116,24 @@ function switchMode(mode) {
   document.querySelectorAll(".mode-btn").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
   document.getElementById("mode-existing").classList.toggle("hidden", mode !== "existing");
   document.getElementById("mode-new").classList.toggle("hidden", mode !== "new");
+}
+
+function switchView(view) {
+  state.view = view;
+  document.querySelectorAll(".view-tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
+  document.getElementById("view-recommended").classList.toggle("hidden", view !== "recommended");
+  document.getElementById("view-browse").classList.toggle("hidden", view !== "browse");
+  if (view === "browse" && !document.getElementById("browse-grid").childElementCount) {
+    loadBrowseActivities();
+  }
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -136,6 +167,66 @@ async function registerNewResident() {
   } catch (err) {
     errorEl.textContent = "Something went wrong -- please try again.";
   }
+}
+
+async function loadCategories() {
+  const categories = await fetchJSON("/api/categories");
+  const container = document.getElementById("category-filters");
+  container.innerHTML = `<span class="cat-chip active" data-cat="">All</span>` + categories.map(
+    c => `<span class="cat-chip" data-cat="${c}">${c}</span>`
+  ).join("");
+
+  container.querySelectorAll(".cat-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      state.browseCategory = chip.dataset.cat;
+      container.querySelectorAll(".cat-chip").forEach(c => {
+        c.classList.toggle("active", c.dataset.cat === state.browseCategory);
+      });
+      loadBrowseActivities();
+    });
+  });
+}
+
+async function loadBrowseActivities() {
+  const params = new URLSearchParams();
+  if (state.browseSearch) params.set("q", state.browseSearch);
+  if (state.browseCategory) params.set("category", state.browseCategory);
+
+  const activities = await fetchJSON(`/api/activities?${params.toString()}`);
+  const grid = document.getElementById("browse-grid");
+  document.getElementById("browse-count").textContent =
+    `${activities.length} activit${activities.length === 1 ? "y" : "ies"}`;
+
+  if (!activities.length) {
+    grid.innerHTML = `<div class="browse-empty">No activities match your search.</div>`;
+    return;
+  }
+
+  grid.innerHTML = activities.map(a => {
+    const color = CATEGORY_COLORS[a.category] || "var(--sage)";
+    const tags = String(a.tags).split(",").slice(0, 3);
+    return `
+      <div class="browse-card" style="--cat-color:${color}" data-activity-id="${a.activity_id}">
+        <span class="b-name">${a.name}</span>
+        <span class="b-cat">${a.category}</span>
+        <div class="b-tags">${tags.map(t => `<span>${t.replace(/-/g, " ")}</span>`).join("")}</div>
+        <div class="b-meta"><span>${a.duration_min} min</span><span>${a.physical_intensity} intensity</span></div>
+        <button class="b-log-btn" data-activity-id="${a.activity_id}" data-activity-name="${a.name}">Log feedback</button>
+      </div>`;
+  }).join("");
+
+  grid.querySelectorAll(".browse-card").forEach(card => {
+    card.addEventListener("click", () => {
+      if (state.currentResidentId) logImplicitClick(card.dataset.activityId);
+    });
+  });
+  grid.querySelectorAll(".b-log-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!state.currentResidentId) return;
+      openModal(btn.dataset.activityId, btn.dataset.activityName);
+    });
+  });
 }
 
 // ---------------------------------------------------------------------

@@ -72,10 +72,26 @@
     </div>
   </section>
 
-  <!-- CENTER: recommendations -->
+  <!-- CENTER: recommendations / browse -->
   <section class="panel recs-panel">
-    <h2 id="recs-heading">Recommended for you</h2>
-    <div id="recs-list" class="recs-list"></div>
+    <div class="view-tabs">
+      <button class="view-tab active" data-view="recommended">Recommended for you</button>
+      <button class="view-tab" data-view="browse">Browse all activities</button>
+    </div>
+
+    <div id="view-recommended" class="view-body">
+      <h2 id="recs-heading">Recommended for you</h2>
+      <div id="recs-list" class="recs-list"></div>
+    </div>
+
+    <div id="view-browse" class="view-body hidden">
+      <div class="browse-controls">
+        <input id="browse-search" type="text" placeholder="Search activities, e.g. &quot;music&quot; or &quot;chair yoga&quot;">
+        <div id="category-filters" class="category-filters"></div>
+      </div>
+      <p class="browse-count" id="browse-count"></p>
+      <div id="browse-grid" class="browse-grid"></div>
+    </div>
   </section>
 
   <!-- RIGHT: facility insights -->
